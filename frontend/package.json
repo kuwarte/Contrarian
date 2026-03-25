@@ -1,0 +1,15 @@
+{
+  "name": "contrarian",
+  "version": "1.0.0",
+  "description": "A React Native social app where users anonymously post opinions and the crowd votes whether it's actually unpopular or surprisingly common. Built with **Expo**, **FastAPI**, and **Supabase**. The more people disagree with you, the higher your Contrarian Score — making unpopularity the goal.",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

@@ -1,6 +1,6 @@
 # Contrarian
 
-A React Native social app where users anonymously post opinions and the crowd votes whether it's actually unpopular or surprisingly common. Built with **Expo**, **FastAPI**, and **Supabase**. The more people disagree with you, the higher your Contrarian Score — making unpopularity the goal.
+A web social app where users anonymously post opinions and the crowd votes whether it's actually unpopular or surprisingly common. Built with **React + Vite**, **FastAPI**, and **Supabase**. The more people disagree with you, the higher your Contrarian Score — making unpopularity the goal.
 
 ## Features
 
@@ -12,44 +12,47 @@ A React Native social app where users anonymously post opinions and the crowd vo
 * Auto-generated codenames and DiceBear avatars
 * Category tagging (Food, Pop Culture, Work, Tech, and more)
 * One vote per device per opinion enforced by the backend
+* Fully responsive — works on desktop and mobile browser
 
 ## Project Structure
 
 ```
 contrarian/
-|-- app/
-|   `-- (tabs)/
-|       |-- index.tsx          # Feed screen
-|       |-- post.tsx           # Post screen
-|       |-- leaderboard.tsx    # Leaderboard screen
-|       `-- profile.tsx        # Profile screen
+|-- frontend/
+|   |-- src/
+|   |   |-- main.tsx
+|   |   |-- App.tsx
+|   |   |-- pages/
+|   |   |   |-- Feed.tsx
+|   |   |   |-- Post.tsx
+|   |   |   |-- Leaderboard.tsx
+|   |   |   `-- Profile.tsx
+|   |   |-- components/
+|   |   |   |-- OpinionCard.tsx
+|   |   |   |-- VoteButtons.tsx
+|   |   |   |-- AvatarBadge.tsx
+|   |   |   |-- CategoryPill.tsx
+|   |   |   `-- ScoreBadge.tsx
+|   |   |-- lib/
+|   |   |   |-- supabase.ts
+|   |   |   |-- api.ts
+|   |   |   `-- identity.ts
+|   |   `-- index.css
+|   |-- .env
+|   |-- tailwind.config.js
+|   |-- vite.config.ts
+|   `-- package.json
 |
-|-- components/
-|   |-- OpinionCard.tsx
-|   |-- VoteButtons.tsx
-|   |-- AvatarBadge.tsx
-|   |-- CategoryPill.tsx
-|   `-- ScoreBadge.tsx
-|
-|-- lib/
-|   |-- supabase.ts            # Supabase client
-|   |-- api.ts                 # FastAPI calls
-|   `-- identity.ts            # Anonymous identity helpers
-|
-|-- backend/
-|   |-- main.py                # FastAPI entry point
-|   |-- models.py
-|   |-- database.py            # Supabase-py client
-|   `-- routes/
-|       |-- opinions.py
-|       |-- votes.py
-|       `-- leaderboard.py
-|
-|-- assets/
-|-- .env
-|-- requirements.txt
-|-- package.json
-`-- README.md
+`-- backend/
+    |-- main.py
+    |-- models.py
+    |-- database.py
+    |-- .env
+    |-- requirements.txt
+    `-- routes/
+        |-- opinions.py
+        |-- votes.py
+        `-- leaderboard.py
 ```
 
 ## Installation
@@ -58,7 +61,6 @@ contrarian/
 
 * Node.js 18+
 * Python 3.10+
-* Expo CLI
 * A Supabase project
 
 ---
@@ -72,7 +74,7 @@ cd contrarian
 
 ### 2. Set up Supabase
 
-Run the following SQL in your Supabase SQL editor to create the schema:
+Run the following SQL in your Supabase SQL editor:
 
 ```sql
 create table categories (
@@ -108,14 +110,13 @@ create table votes (
 alter publication supabase_realtime add table opinions;
 ```
 
-### 3. Configure environment variables
-
-Create a `.env` file in the root:
+### 3. Set up the backend
 
 ```
-EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
-EXPO_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-EXPO_PUBLIC_API_URL=http://localhost:8000
+cd backend
+python -m venv .venv
+.venv\Scripts\activate        # Windows
+pip install -r requirements.txt
 ```
 
 Create a `.env` file inside `backend/`:
@@ -125,42 +126,40 @@ SUPABASE_URL=your_supabase_url
 SUPABASE_SERVICE_KEY=your_service_role_key
 ```
 
-### 4. Install frontend dependencies
+### 4. Set up the frontend
 
 ```
+cd frontend
 npm install
-npx expo install expo-router react-native-svg expo-device
-npx expo install react-native-reanimated react-native-gesture-handler
 ```
 
-### 5. Set up the Python backend
+Create a `.env` file inside `frontend/`:
 
 ```
-cd backend
-python -m venv .venv
-source .venv/bin/activate        # macOS / Linux
-.venv\Scripts\activate           # Windows
-pip install -r requirements.txt
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_anon_key
+VITE_API_URL=http://localhost:8000
 ```
 
 ## Usage
 
-### Start the FastAPI backend
+### Start the backend
 
 ```
 cd backend
 uvicorn main:app --reload
 ```
 
-The API will be running at `http://localhost:8000`.
+API runs at `http://localhost:8000`. Interactive docs available at `http://localhost:8000/docs`.
 
-### Start the Expo app
+### Start the frontend
 
 ```
-npx expo start
+cd frontend
+npm run dev
 ```
 
-Scan the QR code with the Expo Go app on your phone, or press `i` for iOS simulator / `a` for Android emulator.
+App runs at `http://localhost:5173`.
 
 ## API Endpoints
 
@@ -194,10 +193,11 @@ Opinions with fewer than 5 total votes are excluded from the score calculation.
 
 **Frontend**
 * Node.js 18+
-* Expo SDK 51+
+* React 18+
+* Vite 5+
+* Tailwind CSS 3+
+* `react-router-dom` v6
 * `@supabase/supabase-js`
-* `react-native-reanimated`
-* `expo-router`
 
 **Backend**
 * Python 3.10+
