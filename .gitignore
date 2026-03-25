@@ -10,8 +10,8 @@ __pycache__/
 *.so
 .Python
 venv/
-.env
 .venv
+**/.env
 
 # IDE
 .vscode/
