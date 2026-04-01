@@ -1,23 +1,29 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="Contrarian API", version="1.0.0")
+# Import our routers
+from routes import opinions, votes, leaderboard, score
 
-# CORS - allow frontend to call backend
+app = FastAPI(title="Contrarian API", description="Backend for the Contrarian voting app")
+
+# --- CORS Settings ---
+# Important: Update `allow_origins` in production to your frontend URL
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=["*"], # e.g. ["http://localhost:5173", "https://yourdomain.com"]
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# --- Register Routes ---
+app.include_router(opinions.router)
+app.include_router(votes.router)
+app.include_router(leaderboard.router)
+app.include_router(score.router)
 
+# --- Health Check ---
 @app.get("/")
-def root():
-    return {"message": "Contrarian API", "status": "running"}
-
-
 @app.get("/health")
-def health():
-    return {"status": "healthy"}
+async def health_check():
+    return {"status": "ok", "message": "Contrarian API is up and running!"}
