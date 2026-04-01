@@ -1,33 +1,29 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+# Import our routers
 from routes import opinions, votes, leaderboard, score
 
-app = FastAPI(
-    title="Contrarian API",
-    version="1.0.0",
-    description="Backend for Contrarian — anonymous opinion voting platform.",
-)
+app = FastAPI(title="Contrarian API", description="Backend for the Contrarian voting app")
 
+# --- CORS Settings ---
+# Important: Update `allow_origins` in production to your frontend URL
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=["*"], # e.g. ["http://localhost:5173", "https://yourdomain.com"]
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(opinions.router,    prefix="/opinions",    tags=["Opinions"])
-app.include_router(votes.router,       prefix="/votes",       tags=["Votes"])
-app.include_router(leaderboard.router, prefix="/leaderboard", tags=["Leaderboard"])
-app.include_router(score.router,       prefix="/score",       tags=["Score"])
+# --- Register Routes ---
+app.include_router(opinions.router)
+app.include_router(votes.router)
+app.include_router(leaderboard.router)
+app.include_router(score.router)
 
-
-@app.get("/", tags=["Health"])
-def root():
-    return {"message": "Contrarian API", "status": "running"}
-
-
-@app.get("/health", tags=["Health"])
-def health():
-    return {"status": "healthy"}
+# --- Health Check ---
+@app.get("/")
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "message": "Contrarian API is up and running!"}

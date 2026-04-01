@@ -1,77 +1,43 @@
-from fastapi import APIRouter, HTTPException
-
+from fastapi import APIRouter, HTTPException, status
+from models import VoteRequest, VoteResult
 from database import supabase
-from models import VoteCreate, VoteResult
-from services.scoring import compute_opinion_stats
+from services.scoring import calculate_stats
 
-router = APIRouter()
+router = APIRouter(prefix="/votes", tags=["Votes"])
 
+@router.post("", status_code=status.HTTP_201_CREATED, response_model=VoteResult)
+async def cast_vote(vote: VoteRequest):
+    # 1. Ensure the opinion exists
+    op_res = supabase.table("opinions").select("id").eq("id", str(vote.opinion_id)).execute()
+    if not op_res.data:
+        raise HTTPException(status_code=404, detail="Opinion not found")
 
-@router.post("", response_model=VoteResult, status_code=201)
-def cast_vote(payload: VoteCreate):
-    """
-    Cast a vote on an opinion.
+    # 2. Insert the vote (Database constraint prevents duplicates)
+    try:
+        supabase.table("votes").insert({
+            "opinion_id": str(vote.opinion_id),
+            "device_id": vote.device_id,
+            "vote_type": vote.vote_type
+        }).execute()
+    except Exception as e:
+        error_msg = str(e).lower()
+        if "unique" in error_msg or "duplicate" in error_msg or "23505" in error_msg:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Already voted")
+        raise HTTPException(status_code=400, detail=str(e))
 
-    Rules enforced here (not just in the DB):
-    - One vote per device per opinion (unique constraint on opinions_id + device_id).
-    - vote_type must be 'unpopular' or 'common' (validated by Pydantic Literal).
+    # 3. Atomic increment via RPC function
+    col = "votes_unpopular" if vote.vote_type == "unpopular" else "votes_common"
+    supabase.rpc("increment_vote", {"row_id": str(vote.opinion_id), "column_name": col}).execute()
 
-    Returns updated vote counts immediately so the frontend can update
-    the heat bar without a second round-trip.
-    """
-    opinion_id = str(payload.opinion_id)
+    # 4. Fetch the updated row to get correct derived stats
+    updated = supabase.table("opinions").select("*").eq("id", str(vote.opinion_id)).single().execute()
+    total, pct, tier = calculate_stats(updated.data["votes_unpopular"], updated.data["votes_common"])
 
-    # 1. Check opinion exists
-    op = (
-        supabase.table("opinions")
-        .select("id, votes_unpopular, votes_common")
-        .eq("id", opinion_id)
-        .single()
-        .execute()
-    )
-    if not op.data:
-        raise HTTPException(status_code=404, detail="Opinion not found.")
-
-    # 2. Check for duplicate vote
-    existing = (
-        supabase.table("votes")
-        .select("id")
-        .eq("opinion_id", opinion_id)
-        .eq("device_id", payload.device_id)
-        .maybe_single()
-        .execute()
-    )
-    if existing.data:
-        raise HTTPException(
-            status_code=409,
-            detail="You have already voted on this opinion.",
-        )
-
-    # 3. Insert vote record
-    supabase.table("votes").insert({
-        "opinion_id": opinion_id,
-        "device_id": payload.device_id,
-        "vote_type": payload.vote_type,
-    }).execute()
-
-    # 4. Increment the correct counter on the opinion
-    column = (
-        "votes_unpopular" if payload.vote_type == "unpopular" else "votes_common"
-    )
-    updated = (
-        supabase.table("opinions")
-        .update({column: op.data[column] + 1})
-        .eq("id", opinion_id)
-        .execute()
-    )
-    row = updated.data[0]
-    stats = compute_opinion_stats(row["votes_unpopular"], row["votes_common"])
-
-    return VoteResult(
-        opinion_id=row["id"],
-        votes_unpopular=row["votes_unpopular"],
-        votes_common=row["votes_common"],
-        total_votes=stats["total_votes"],
-        unpopularity_pct=stats["unpopularity_pct"],
-        tier=stats["tier"],
-    )
+    return {
+        "opinion_id": vote.opinion_id,
+        "votes_unpopular": updated.data["votes_unpopular"],
+        "votes_common": updated.data["votes_common"],
+        "total_votes": total,
+        "unpopularity_pct": pct,
+        "tier": tier
+    }
